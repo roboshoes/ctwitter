@@ -3,4 +3,8 @@ Twitter.sln
 Twitter.vcxproj
 Twitter.vcxproj.filters
 Twitter.vcxproj.user
+Twitter.opensdf
+Twitter.suo
 ipch
+
+*.o
