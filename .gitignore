@@ -6,5 +6,7 @@ Twitter.vcxproj.user
 Twitter.opensdf
 Twitter.suo
 ipch
+Debug
+Release
 
 *.o
