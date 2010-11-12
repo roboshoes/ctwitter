@@ -8,10 +8,7 @@
 
 using namespace std;
 
-Server::Server(char* ip, unsigned short port) {
-
-    this->port = port;
-    this->ip = ip;
+Server::Server(char* _ip, unsigned short _port):ip(_ip), port(_port) {
 
     this->serverAddress.sin_family = AF_INET;
     this->serverAddress.sin_port = htons(port);

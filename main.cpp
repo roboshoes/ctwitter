@@ -36,7 +36,7 @@ int main () {
 
         myClient.connectSocket();
 
-        cout << "DONE" << endl;
+        cout << "DONE" << endl << endl;
 
         myClient.start();
     }
