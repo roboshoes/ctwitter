@@ -2,6 +2,7 @@
 #include "server.h"
 #include <pthread.h>
 #include <iostream>
+#include <cerrno>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -46,8 +47,6 @@ void *handleNewClient(void *params) {
 
     FD_SET(connectionFileDescriptor, args->readFileDescriptorSet);
 
-    //closesocket(connectionFileDescriptor);
-
     send(args->clientAccept, "Welcome to Twitter", 18, 0);
 
     free(args);
@@ -57,15 +56,19 @@ void *handleNewClient(void *params) {
 
 void *receiveMessage(void *i) {
 
-    cout << "recv" << endl;
-   
     int* socket;
     socket = (int*) i;
 
     char buffer[140];
     memset(buffer, 0, sizeof(buffer));
 
-    recv(*socket, buffer, 140, 0);
+    cout << "receiving on socket: " << *socket << endl;
+
+    int response = recv(*socket, buffer, sizeof(buffer), 0);
+
+    if (response < 0) {
+        cout << "Recieve fehlgesschlagen für client: " << *socket << endl;
+    }
 
     cout << "Message from client: " << *socket << "  " << buffer << endl;
 
@@ -80,59 +83,60 @@ void Server::selectSockets() {
 
     int selectResult;
 
-    fd_set readFileDescriptorSet;
+    fd_set currentReadSet;
+    fd_set masterReadSet;
 
     timeval timeInterval;
             timeInterval.tv_sec = 5;
             timeInterval.tv_usec = 0;
 
-    FD_ZERO(&readFileDescriptorSet);
-    FD_SET(serverSocketFileDescriptor, &readFileDescriptorSet);
+    FD_ZERO(&masterReadSet);
+    FD_SET(serverSocketFileDescriptor, &masterReadSet);
 
     sizeOfClient = sizeof(clientAddress);
 
     while (isAlive) {
-        
-        selectResult = select(highestSocketFileDescriptor + 1, &readFileDescriptorSet, NULL, NULL, NULL);
 
-        cout << "selectResult: " << selectResult << endl;
+        memcpy(&currentReadSet, &masterReadSet, sizeof(masterReadSet));
+
+        selectResult = select(highestSocketFileDescriptor + 1, &currentReadSet, NULL, NULL, NULL);
+
+        if (selectResult < 0) {
+            cout << "Error with select!\nProgram is canceled" << endl;
+        }
 
         if (selectResult > 0) {
 
-            /*
-            if (FD_ISSET(serverSocketFileDescriptor, &readFileDescriptorSet)) {
-
-                threadParameter* params;
-                params = (threadParameter *) malloc(sizeof(threadParameter));
-                
-                params->readFileDescriptorSet = &readFileDescriptorSet;
-                params->clientAccept = accept(serverSocketFileDescriptor, (sockaddr *)&clientAddress, &sizeOfClient);
-                
-                cout << "client connected on: " << params->clientAccept << endl;
-
-                if (params->clientAccept > highestSocketFileDescriptor) {
-                    highestSocketFileDescriptor = params->clientAccept;
-                }
-
-                pthread_t acceptID;
-                pthread_create(&acceptID, NULL, &handleNewClient, params);
-            }
-
-            cout << highestSocketFileDescriptor << endl;
-
-            */
-
             for (int i = 4; i < highestSocketFileDescriptor + 1; i++) {
 
-                if (FD_ISSET(i, &readFileDescriptorSet)) {
+                if (FD_ISSET(i, &currentReadSet)) {
                    
-                    if (i == serverSocketFileDescriptor) {
+                    if (i != serverSocketFileDescriptor) {
+                        
+                        int *descriptor;
+                        descriptor = (int*) malloc(sizeof(int*));
+                        *descriptor = i; 
+
+                        char buffer[140];
+                        memset(buffer, 0, sizeof(buffer));
+
+                        cout << "receiving on socket: " << *socket << endl;
+                        int response = recv(i, buffer, sizeof(buffer), 0);
+                        cout << "Client " << i << " sent: " << buffer << endl;
+
+                        //pthread_t receiveID;
+                        //pthread_create(&receiveID, NULL, &receiveMessage, descriptor);
+
+                    } else if (i == serverSocketFileDescriptor) {
+
                         threadParameter* params;
                         params = (threadParameter *) malloc(sizeof(threadParameter));
                 
-                        params->readFileDescriptorSet = &readFileDescriptorSet;
+                        params->readFileDescriptorSet = &currentReadSet;
                         params->clientAccept = accept(serverSocketFileDescriptor, (sockaddr *)&clientAddress, &sizeOfClient);
-                
+                        
+                        FD_SET(params->clientAccept, &masterReadSet);
+
                         cout << "client connected on: " << params->clientAccept << endl;
 
                         if (params->clientAccept > highestSocketFileDescriptor) {
@@ -141,18 +145,6 @@ void Server::selectSockets() {
 
                         pthread_t acceptID;
                         pthread_create(&acceptID, NULL, &handleNewClient, params);
-
-                    } else {
-                        
-                        cout << "found inbound socket at: " << i << endl;
-
-                        int *descriptor;
-                        descriptor = (int*) malloc(sizeof(int*));
-                        *descriptor = i; 
-
-                        pthread_t receiveID;
-                        pthread_create(&receiveID, NULL, &receiveMessage, descriptor); 
-
                     }
                 }
             }

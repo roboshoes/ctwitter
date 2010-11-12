@@ -13,11 +13,14 @@ public:
     void selectSockets();
 
 private:
+
     bool isAlive;
     char *ip;
     unsigned short port;
+
     sockaddr_in serverAddress;
     sockaddr_in clientAddress;
+
     int serverSocketFileDescriptor;
     int sizeOfClient;
     int highestSocketFileDescriptor;
