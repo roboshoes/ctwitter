@@ -124,8 +124,8 @@ void Server::selectSockets() {
                         int response = recv(i, buffer, sizeof(buffer), 0);
                         cout << "Client " << i << " sent: " << buffer << endl;
 
-                        //pthread_t receiveID;
-                        //pthread_create(&receiveID, NULL, &receiveMessage, descriptor);
+                        pthread_t receiveID;
+                        pthread_create(&receiveID, NULL, &receiveMessage, descriptor);
 
                     } else if (i == serverSocketFileDescriptor) {
 

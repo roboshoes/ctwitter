@@ -1,5 +1,8 @@
 #include <iostream>
 #include <cstdlib>
+#include <ios>
+#include <istream>
+#include <limits>
 #include "client.h"
 
 #pragma comment(lib, "ws2_32.lib")
@@ -38,7 +41,7 @@ void Client::start() {
 
     sendLogin(name);
 
-    showTweetScreen();
+    showMenu();
 }
 
 void Client::close() {
@@ -51,6 +54,8 @@ void Client::showTweetScreen() {
     
     int bla;
     cin >> bla;
+
+    Sleep(1000);
 }
 
 void Client::showMenu() {
@@ -60,8 +65,46 @@ void Client::showMenu() {
 
     char choice;
 
-    cout << ">> ";
+    cout << endl << endl << ">> ";
     cin >> choice;
+
+    char name[USERNAME_LENGTH];
+
+    switch (choice) {
+        case 't':
+            cout << "Whats going on?" << endl;
+            cout << ">> ";
+
+            char message[TWEET_LENGTH];
+            cin >> message;
+
+            sendTweet(message);
+        break;
+
+        case 'f':
+            cout << "Who do you want to follow?" << endl;
+            cout << ">> ";
+
+            cin >> name;
+
+            sendFollow(name);
+        break;
+
+        case 'u':
+            cout << "Who's isn't interesting any more?" << endl;
+            cout << ">> ";
+
+            cin >> name;
+
+            sendUnfollow(name);
+        break;
+    }
+
+    cout << "Request completed" << endl;
+
+    Sleep(500);
+
+    showTweetScreen();
 }
 
 void Client::printMenu() {
@@ -78,6 +121,39 @@ void Client::sendLogin(char* name) {
 
     string buffer;
     buffer.append("n");
+    buffer.append(name);
+
+    const char* message;
+    message = buffer.c_str();
+
+    send(socketFileDescriptor, message, USERNAME_LENGTH + 1, 0);
+}
+
+void Client::sendTweet(char* message) {
+    string buffer;
+    buffer.append("t");
+    buffer.append(message);
+
+    const char* tweet;
+    tweet = buffer.c_str();
+
+    send(socketFileDescriptor, tweet, TWEET_LENGTH + 1, 0); 
+}
+
+void Client::sendFollow(char* name) {
+    string buffer;
+    buffer.append("f");
+    buffer.append(name);
+
+    const char* message;
+    message = buffer.c_str();
+
+    send(socketFileDescriptor, message, USERNAME_LENGTH + 1, 0);
+}
+
+void Client::sendUnfollow(char* name) {
+    string buffer;
+    buffer.append("u");
     buffer.append(name);
 
     const char* message;
