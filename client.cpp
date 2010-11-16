@@ -3,7 +3,10 @@
 #include <ios>
 #include <istream>
 #include <limits>
+#include <conio.h>
+#include <pthread.h>
 #include "client.h"
+#include "clientworker.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -41,7 +44,10 @@ void Client::start() {
 
     sendLogin(name);
 
-    showMenu();
+    isAlive = true;
+    printTweets = true;
+
+    showTweetScreen();
 }
 
 void Client::close() {
@@ -49,73 +55,96 @@ void Client::close() {
 	WSACleanup();
 }
 
+void* launchMemberFunction(void *args);
+void* collectTweets(void *args);
+
+struct threadParams {
+    bool* printTweets;
+    int socket;
+};
+
 void Client::showTweetScreen() {
-    system("cls");
     
-    int bla;
-    cin >> bla;
+    bool clearScreen = true;
+    int selectResult;
 
-    Sleep(1000);
+    fd_set currentReadSet;
+
+    FD_ZERO(&currentReadSet);
+    FD_SET(socketFileDescriptor, &currentReadSet);
+
+    pthread_t tweetRecieveID;
+    pthread_create(&tweetRecieveID, NULL, &collectTweets, NULL);
+
+    char buffer[TWEET_LENGTH];
+
+    while(isAlive) {
+        
+        if (_kbhit() && printTweets) {
+
+            threadParams* params;
+            params = (threadParams *) malloc(sizeof(threadParams));
+
+            params->printTweets = &printTweets;
+            params->socket = socketFileDescriptor;
+
+            pthread_t receiveID;
+            pthread_create(&receiveID, NULL, &launchMemberFunction, params);
+
+            printTweets = false;
+            clearScreen = true;
+        }
+
+        timeval* timeInterval = new timeval;
+        
+        timeInterval->tv_sec = 1;
+        timeInterval->tv_usec = 0;
+
+        selectResult = select(socketFileDescriptor, &currentReadSet, NULL, NULL, timeInterval);
+
+        delete timeInterval;
+
+        if (selectResult == 1) {
+            recv(socketFileDescriptor, buffer, TWEET_LENGTH, 0);
+        }
+
+        if (printTweets) {
+
+            if (clearScreen) {
+                system("cls");
+                clearScreen = false;
+            }
+
+            if (selectResult == -1) {
+                cout << "error: " << WSAGetLastError() << endl;
+            }
+
+            if (selectResult == 1) {
+                cout << "recv: " << buffer << endl;
+            }
+        }
+    }
 }
 
-void Client::showMenu() {
+void* launchMemberFunction(void *args) {
+
     system("cls");
 
-    printMenu();
+    pthread_detach(pthread_self());
 
-    char choice;
+    threadParams *params;
+    params = (threadParams*) args;
 
-    cout << endl << endl << ">> ";
-    cin >> choice;
+    ClientWorker myWorker(params->socket);
+    myWorker.showMenu();
 
-    char name[USERNAME_LENGTH];
+    *((bool*)params->printTweets) = true;
 
-    switch (choice) {
-        case 't':
-            cout << "Whats going on?" << endl;
-            cout << ">> ";
+    free(params);
 
-            char message[TWEET_LENGTH];
-            cin >> message;
-
-            sendTweet(message);
-        break;
-
-        case 'f':
-            cout << "Who do you want to follow?" << endl;
-            cout << ">> ";
-
-            cin >> name;
-
-            sendFollow(name);
-        break;
-
-        case 'u':
-            cout << "Who's isn't interesting any more?" << endl;
-            cout << ">> ";
-
-            cin >> name;
-
-            sendUnfollow(name);
-        break;
-    }
-
-    cout << "Request completed" << endl;
-
-    Sleep(500);
-
-    showTweetScreen();
+    return NULL;
 }
 
-void Client::printMenu() {
-    cout << "What to do next?" << endl << endl;
-
-    cout << "[t] ... tweet" << endl;
-    cout << "[f] ... follow" << endl;
-    cout << "[u] ... unfollow" << endl;
-
-    cout << endl << endl;
-}
 
 void Client::sendLogin(char* name) {
 
@@ -129,38 +158,6 @@ void Client::sendLogin(char* name) {
     send(socketFileDescriptor, message, USERNAME_LENGTH + 1, 0);
 }
 
-void Client::sendTweet(char* message) {
-    string buffer;
-    buffer.append("t");
-    buffer.append(message);
-
-    const char* tweet;
-    tweet = buffer.c_str();
-
-    send(socketFileDescriptor, tweet, TWEET_LENGTH + 1, 0); 
-}
-
-void Client::sendFollow(char* name) {
-    string buffer;
-    buffer.append("f");
-    buffer.append(name);
-
-    const char* message;
-    message = buffer.c_str();
-
-    send(socketFileDescriptor, message, USERNAME_LENGTH + 1, 0);
-}
-
-void Client::sendUnfollow(char* name) {
-    string buffer;
-    buffer.append("u");
-    buffer.append(name);
-
-    const char* message;
-    message = buffer.c_str();
-
-    send(socketFileDescriptor, message, USERNAME_LENGTH + 1, 0);
-}
 
 void Client::initializeWindowsSockets() {
     WSADATA wsa;
