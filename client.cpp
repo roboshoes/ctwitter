@@ -55,6 +55,9 @@ void Client::close() {
 	WSACleanup();
 }
 
+/*
+ * Functions and data structures needed vor the threads.
+ */
 void* launchMemberFunction(void *args);
 void* collectTweets(void *args);
 
@@ -63,20 +66,25 @@ struct threadParams {
     int socket;
 };
 
+struct collectorParams {
+    bool* printTweets;
+    bool* isAlive;
+    int socket;
+    int tweetLength;
+};
+
 void Client::showTweetScreen() {
     
-    bool clearScreen = true;
-    int selectResult;
+    collectorParams* tweetSelectorParams;
+    tweetSelectorParams = (collectorParams*) malloc(sizeof(collectorParams));
 
-    fd_set currentReadSet;
-
-    FD_ZERO(&currentReadSet);
-    FD_SET(socketFileDescriptor, &currentReadSet);
+    tweetSelectorParams->printTweets = &printTweets;
+    tweetSelectorParams->socket = socketFileDescriptor;
+    tweetSelectorParams->tweetLength = TWEET_LENGTH;
+    tweetSelectorParams->isAlive = &isAlive;
 
     pthread_t tweetRecieveID;
-    pthread_create(&tweetRecieveID, NULL, &collectTweets, NULL);
-
-    char buffer[TWEET_LENGTH];
+    pthread_create(&tweetRecieveID, NULL, &collectTweets, tweetSelectorParams);
 
     while(isAlive) {
         
@@ -92,38 +100,47 @@ void Client::showTweetScreen() {
             pthread_create(&receiveID, NULL, &launchMemberFunction, params);
 
             printTweets = false;
-            clearScreen = true;
-        }
-
-        timeval* timeInterval = new timeval;
-        
-        timeInterval->tv_sec = 1;
-        timeInterval->tv_usec = 0;
-
-        selectResult = select(socketFileDescriptor, &currentReadSet, NULL, NULL, timeInterval);
-
-        delete timeInterval;
-
-        if (selectResult == 1) {
-            recv(socketFileDescriptor, buffer, TWEET_LENGTH, 0);
-        }
-
-        if (printTweets) {
-
-            if (clearScreen) {
-                system("cls");
-                clearScreen = false;
-            }
-
-            if (selectResult == -1) {
-                cout << "error: " << WSAGetLastError() << endl;
-            }
-
-            if (selectResult == 1) {
-                cout << "recv: " << buffer << endl;
-            }
         }
     }
+}
+
+void* collectTweets(void *args) {
+
+    pthread_detach(pthread_self());
+
+    collectorParams *params;
+    params = (collectorParams*) args;
+
+    bool setMissedTweets = true;
+
+    while(*((bool*)params->isAlive)) {
+
+        char* buffer = new char[params->tweetLength];
+        memset(buffer, 0, sizeof(char) * params->tweetLength);
+
+        int response = recv(params->socket, buffer, params->tweetLength, 0);
+
+        if (response < 0) {
+            cout << "Error on recieving" << endl;
+        }
+
+        if (*((bool*)params->printTweets)) {
+
+            if (setMissedTweets) {
+                system("cls");
+                setMissedTweets = false;
+            }
+
+            cout << "Tweet von jemandem: " << buffer << endl;
+            
+        } else if (!setMissedTweets) {
+            setMissedTweets = true;
+        }
+
+        delete [] buffer;
+    }
+
+    return NULL;
 }
 
 void* launchMemberFunction(void *args) {
@@ -141,6 +158,7 @@ void* launchMemberFunction(void *args) {
     *((bool*)params->printTweets) = true;
 
     free(params);
+    system("cls");
 
     return NULL;
 }
