@@ -2,12 +2,14 @@
 #define SERVER_H
 
 #include <WinSock2.h>
+#include "data.h"
 
 class Server {
 
 public:
 
     Server(char* ip, unsigned short port);
+    ~Server();
     
     void start();
     void selectSockets();
@@ -17,6 +19,7 @@ private:
     bool isAlive;
     char *ip;
     unsigned short port;
+    Data *data;
 
     sockaddr_in serverAddress;
     sockaddr_in clientAddress;

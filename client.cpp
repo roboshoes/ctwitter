@@ -5,6 +5,7 @@
 #include <limits>
 #include <conio.h>
 #include <pthread.h>
+#include <list>
 #include "client.h"
 #include "clientworker.h"
 
@@ -72,6 +73,7 @@ struct collectorParams {
     int socket;
     int tweetLength;
 };
+/**/
 
 void Client::showTweetScreen() {
     

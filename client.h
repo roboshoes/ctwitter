@@ -12,6 +12,9 @@ public:
     void start();
     void close();
 
+    static const int USERNAME_LENGTH = 25;
+    static const int TWEET_LENGTH = 140;
+
 private:
 
     char* ip;
@@ -27,9 +30,6 @@ private:
     void showTweetScreen();
 
     void sendLogin(char* name);
-
-    static const int USERNAME_LENGTH = 25;
-    static const int TWEET_LENGTH = 140;
 };
 
 #endif

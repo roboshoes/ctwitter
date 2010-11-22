@@ -3,6 +3,8 @@
 #include <pthread.h>
 #include <iostream>
 #include <cerrno>
+#include <string>
+#include "client.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -13,6 +15,12 @@ Server::Server(char* _ip, unsigned short _port):ip(_ip), port(_port) {
     this->serverAddress.sin_family = AF_INET;
     this->serverAddress.sin_port = htons(port);
     this->serverAddress.sin_addr.s_addr = inet_addr(ip);
+
+    data = new Data();
+}
+
+Server::~Server() {
+    delete data;
 }
 
 void Server::start() {
@@ -30,6 +38,8 @@ void Server::start() {
 struct threadParameter {
     int clientAccept;
     fd_set *readFileDescriptorSet;
+    Data *data;
+    char* message;
 };
 
 void *handleNewClient(void *params) {
@@ -37,41 +47,54 @@ void *handleNewClient(void *params) {
     threadParameter* args;
     args = (threadParameter*) params;
 
-    int connectionFileDescriptor;
-    connectionFileDescriptor = args->clientAccept;
-
     pthread_detach(pthread_self());
-
-    FD_SET(connectionFileDescriptor, args->readFileDescriptorSet);
 
     send(args->clientAccept, "Welcome to Twitter", 18, 0);
 
-    free(args);
+    std::free(args);
 
     return 0;
 }
 
-void *receiveMessage(void *i) {
+void *handleIncomeMessage(void *params) {
 
-    int* socket;
-    socket = (int*) i;
+    threadParameter* args;
+    args = (threadParameter*) params;
 
-    char buffer[140];
-    memset(buffer, 0, sizeof(buffer));
+    int socket = args->clientAccept;
 
-    cout << "receiving on socket: " << *socket << endl;
+    char order = args->message[0];
 
-    int response = recv(*socket, buffer, sizeof(buffer), 0);
+    string message(args->message);
+    message.erase(0, 1);
 
-    if (response < 0) {
-        cout << "Recieve fehlgesschlagen für client: " << *socket << endl;
+    switch (order) {
+
+        case 'n':
+
+            if (args->data->isClient(message)) {
+                cout << "LOGIN          Error. User " << message << " is alread logged in" << endl;
+            } else {
+                args->data->addClient(message, args->clientAccept);
+                cout << "LOGIN          Client: " << args->clientAccept << "logged in as " << message << endl;
+            }
+
+        break;
+
+        case 't':
+
+            cout << "TWEET           Client: " << args->clientAccept << " tweets: " << message << endl;
+
+        break;
+
+        default:
+
+            cout << "UNKNOWKN TOKEN recieved order: " << order << " with message: " << message << endl;
+        break;
+
     }
 
-    cout << "Message from client: " << *socket << "  " << buffer << endl;
-
-    send(*socket, "Socket", 6, 0);
-
-    free(i);
+    std::free(args);
 
     return 0;
 }
@@ -109,20 +132,21 @@ void Server::selectSockets() {
                 if (FD_ISSET(i, &currentReadSet)) {
                    
                     if (i != serverSocketFileDescriptor) {
-                        
-                        int *descriptor;
-                        descriptor = (int*) malloc(sizeof(int*));
-                        *descriptor = i; 
 
+                        threadParameter* params;
+                        params = (threadParameter *) malloc(sizeof(threadParameter));
+                        
                         char buffer[140];
                         memset(buffer, 0, sizeof(buffer));
 
-                        cout << "receiving on socket: " << *socket << endl;
                         int response = recv(i, buffer, sizeof(buffer), 0);
-                        cout << "Client " << i << " sent: " << buffer << endl;
+
+                        params->clientAccept = i;
+                        params->data = data;
+                        params->message = buffer;
 
                         pthread_t receiveID;
-                        pthread_create(&receiveID, NULL, &receiveMessage, descriptor);
+                        pthread_create(&receiveID, NULL, &handleIncomeMessage, params);
 
                     } else if (i == serverSocketFileDescriptor) {
 
@@ -131,10 +155,11 @@ void Server::selectSockets() {
                 
                         params->readFileDescriptorSet = &currentReadSet;
                         params->clientAccept = accept(serverSocketFileDescriptor, (sockaddr *)&clientAddress, &sizeOfClient);
+                        params->data = data;
                         
                         FD_SET(params->clientAccept, &masterReadSet);
 
-                        cout << "client connected on: " << params->clientAccept << endl;
+                        cout << "CONNECTION     client connected on: " << params->clientAccept << endl;
 
                         if (params->clientAccept > highestSocketFileDescriptor) {
                             highestSocketFileDescriptor = params->clientAccept;

@@ -24,7 +24,9 @@ int main () {
         myServer.start();
 
         cout << "DONE" << endl << endl;
-        cout << "Server is running and ready for input. " << endl;
+        cout << "Server is running and ready for input. " << endl << endl;
+
+        cout << "==================== ACTIVITY ====================" << endl << endl;
 
         myServer.selectSockets();
 
