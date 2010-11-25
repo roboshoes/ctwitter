@@ -1,6 +1,7 @@
 #include <iostream>
 #include "clientworker.h"
 #include <WinSock2.h>
+#include <string>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -26,7 +27,9 @@ void ClientWorker::showMenu() {
             cout << ">> ";
 
             char message[TWEET_LENGTH];
-            cin >> message;
+
+            cin.ignore(1000, '\n');
+            cin.getline(message, TWEET_LENGTH);
 
             sendTweet(message);
         break;
@@ -35,7 +38,8 @@ void ClientWorker::showMenu() {
             cout << "Who do you want to follow?" << endl;
             cout << ">> ";
 
-            cin >> name;
+            cin.ignore(1000, '\n');
+            cin.getline(name, TWEET_LENGTH);
 
             sendFollow(name);
         break;
@@ -44,7 +48,8 @@ void ClientWorker::showMenu() {
             cout << "Who isn't interesting any more?" << endl;
             cout << ">> ";
 
-            cin >> name;
+            cin.ignore(1000, '\n');
+            cin.getline(name, TWEET_LENGTH);
 
             sendUnfollow(name);
         break;

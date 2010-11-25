@@ -6,6 +6,7 @@
 #include <conio.h>
 #include <pthread.h>
 #include <list>
+#include <string>
 #include "client.h"
 #include "clientworker.h"
 
@@ -13,7 +14,13 @@
 
 using namespace std;
 
-Client::Client(char* _ip, unsigned short _port):ip(_ip), port(_port) {}
+Client::Client(char* _ip, unsigned short _port):ip(_ip), port(_port) {
+    tweetList = new list<string>;
+}
+
+Client::~Client() {
+    delete tweetList;
+}
 
 void Client::connectSocket() {
 
@@ -65,6 +72,7 @@ void* collectTweets(void *args);
 struct threadParams {
     bool* printTweets;
     int socket;
+    list<string>* tweetList;
 };
 
 struct collectorParams {
@@ -72,6 +80,7 @@ struct collectorParams {
     bool* isAlive;
     int socket;
     int tweetLength;
+    list<string>* tweetList;
 };
 /**/
 
@@ -84,6 +93,7 @@ void Client::showTweetScreen() {
     tweetSelectorParams->socket = socketFileDescriptor;
     tweetSelectorParams->tweetLength = TWEET_LENGTH;
     tweetSelectorParams->isAlive = &isAlive;
+    tweetSelectorParams->tweetList = tweetList;
 
     pthread_t tweetRecieveID;
     pthread_create(&tweetRecieveID, NULL, &collectTweets, tweetSelectorParams);
@@ -97,6 +107,7 @@ void Client::showTweetScreen() {
 
             params->printTweets = &printTweets;
             params->socket = socketFileDescriptor;
+            params->tweetList = tweetList;
 
             pthread_t receiveID;
             pthread_create(&receiveID, NULL, &launchMemberFunction, params);
@@ -117,27 +128,20 @@ void* collectTweets(void *args) {
 
     while(*((bool*)params->isAlive)) {
 
-        char* buffer = new char[params->tweetLength];
-        memset(buffer, 0, sizeof(char) * params->tweetLength);
+        char* buffer = new char[Client::TWEET_LENGTH + Client::USERNAME_LENGTH + 10];
+        memset(buffer, 0, sizeof(char) * (Client::TWEET_LENGTH + Client::USERNAME_LENGTH + 10));
 
         int response = recv(params->socket, buffer, params->tweetLength, 0);
 
         if (response < 0) {
             cout << "Error on recieving" << endl;
         }
+        
+        params->tweetList->push_back(string(buffer));
 
         if (*((bool*)params->printTweets)) {
-
-            if (setMissedTweets) {
-                system("cls");
-                setMissedTweets = false;
-            }
-
-            cout << "Tweet von jemandem: " << buffer << endl;
-            
-        } else if (!setMissedTweets) {
-            setMissedTweets = true;
-        }
+            cout << buffer << endl;  
+        } 
 
         delete [] buffer;
     }
@@ -157,10 +161,21 @@ void* launchMemberFunction(void *args) {
     ClientWorker myWorker(params->socket);
     myWorker.showMenu();
 
+    
+    system("cls");
+    list<string>::iterator i = params->tweetList->begin();
+    if (!params->tweetList->empty()) {
+        while (i != params->tweetList->end()) {
+        
+            cout << (*i) << endl;
+
+            i++;
+        }
+    }
+
     *((bool*)params->printTweets) = true;
 
     free(params);
-    system("cls");
 
     return NULL;
 }

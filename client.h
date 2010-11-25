@@ -2,12 +2,19 @@
 #define CLIENT_H
 
 #include <WinSock2.h>
+#include <list>
+#include <string>
+#include <iostream>
+
+using namespace std;
 
 class Client {
 
 public:
 
     Client(char* ip, unsigned short port);
+    ~Client();
+
     void connectSocket();
     void start();
     void close();
@@ -23,6 +30,8 @@ private:
 
     bool isAlive;
     bool printTweets;
+
+    list<string>* tweetList;
     
     sockaddr_in serverAddress;
 

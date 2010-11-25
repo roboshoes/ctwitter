@@ -68,6 +68,11 @@ void *handleIncomeMessage(void *params) {
     string message(args->message);
     message.erase(0, 1);
 
+    string forwardMessage;
+
+    set<int> followersList;
+    set<int>::iterator m;
+
     switch (order) {
 
         case 'n':
@@ -76,20 +81,46 @@ void *handleIncomeMessage(void *params) {
                 cout << "LOGIN          Error. User " << message << " is alread logged in" << endl;
             } else {
                 args->data->addClient(message, args->clientAccept);
-                cout << "LOGIN          Client: " << args->clientAccept << "logged in as " << message << endl;
+                cout << "LOGIN          client " << args->clientAccept << " logged in as " << message << endl;
             }
 
         break;
 
         case 't':
+            
+            cout << "TWEET          client " << args->clientAccept << " tweets: " << message << endl;
 
-            cout << "TWEET           Client: " << args->clientAccept << " tweets: " << message << endl;
+            forwardMessage.append(args->data->getNameByDescriptor(args->clientAccept));
+            forwardMessage.append(": ");
+            forwardMessage.append(message);
 
+            followersList = args->data->getFollowers(args->clientAccept);
+            m = followersList.begin();
+
+            while (m != followersList.end()) {
+                send((*m), forwardMessage.c_str(), Client::TWEET_LENGTH, 0); 
+                cout << "SEND TWEET     " << "forward tweet to " << (*m) << endl;
+                m++;
+            }
+
+        break;
+
+        case 'f':
+            cout << "FOLLOW         client " << args->clientAccept << " now follows " << message << endl;
+
+            args->data->addFollower(args->clientAccept, args->data->getDescriptorByName(message));
+        break;
+
+        case 'u':
+            cout << "UNFOLLOW       client " << args->clientAccept << " stopped following " << message << endl;
+
+            args->data->removeFollower(args->clientAccept, args->data->getDescriptorByName(message));
         break;
 
         default:
 
             cout << "UNKNOWKN TOKEN recieved order: " << order << " with message: " << message << endl;
+
         break;
 
     }
@@ -136,7 +167,7 @@ void Server::selectSockets() {
                         threadParameter* params;
                         params = (threadParameter *) malloc(sizeof(threadParameter));
                         
-                        char buffer[140];
+                        char buffer[Client::TWEET_LENGTH + 1];
                         memset(buffer, 0, sizeof(buffer));
 
                         int response = recv(i, buffer, sizeof(buffer), 0);
