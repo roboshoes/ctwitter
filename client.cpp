@@ -45,12 +45,31 @@ void Client::connectSocket() {
 void Client::start() {
 
     char name[USERNAME_LENGTH];
+    bool userAccepted = false;
 
-    cout << "Enter username: ";
-    cin >> name;
-    cout << endl << endl;
+    char answer[4];
+    memset(answer, 0, sizeof(answer));
 
-    sendLogin(name);
+    while (!userAccepted) {
+
+        cout << "Enter username: ";
+        cin >> name;
+        cout << endl << endl;
+
+        sendLogin(name);
+
+        int response = recv(socketFileDescriptor, answer, sizeof(answer), 0);
+        if (response < 0) {
+            cout << "Error on loggin. Programm was canceled" << endl;
+            exit(0);
+        }
+
+        if (answer[0] == '1') {
+            userAccepted = true;
+        } else {
+            cout << "This user is already logged in." << endl << endl;
+        }
+    }
 
     system("cls");
 
@@ -87,7 +106,13 @@ struct collectorParams {
 /**/
 
 void Client::showTweetScreen() {
-    
+   
+    tweetList->push_back("====================================");
+    tweetList->push_back("==  ALL YOUR TWEETS ON ONE SIGHT  ==");
+    tweetList->push_back("====================================");
+    tweetList->push_back(" ");
+    tweetList->push_back("(Hit any key to go into the the menu mode for tweeting or following)\n\n");
+
     collectorParams* tweetSelectorParams;
     tweetSelectorParams = (collectorParams*) malloc(sizeof(collectorParams));
 
@@ -126,7 +151,15 @@ void* collectTweets(void *args) {
     collectorParams *params;
     params = (collectorParams*) args;
 
-    bool setMissedTweets = true;
+    list<string>::iterator i = params->tweetList->begin();
+    if (!params->tweetList->empty()) {
+        while (i != params->tweetList->end()) {
+        
+            cout << (*i) << endl;
+
+            i++;
+        }
+    }
 
     while(*((bool*)params->isAlive)) {
 
@@ -136,13 +169,14 @@ void* collectTweets(void *args) {
         int response = recv(params->socket, buffer, params->tweetLength, 0);
 
         if (response < 0) {
-            cout << "Error on recieving" << endl;
+            closesocket(params->socket);
+            cout << "=======================\nError on recieving. Socket was closed." << endl;
         }
         
-        params->tweetList->push_back(string(buffer));
+        params->tweetList->push_back(string(buffer).append("\n"));
 
         if (*((bool*)params->printTweets)) {
-            cout << buffer << endl;  
+            cout << buffer << "\n" << endl;  
         } 
 
         delete [] buffer;

@@ -44,20 +44,6 @@ struct threadParameter {
     char* message;
 };
 
-void *handleNewClient(void *params) {
-
-    threadParameter* args;
-    args = (threadParameter*) params;
-
-    pthread_detach(pthread_self());
-
-    send(args->clientAccept, "Welcome to Twitter", 18, 0);
-
-    std::free(args);
-
-    return 0;
-}
-
 void *handleIncomeMessage(void *params) {
 
     threadParameter* args;
@@ -83,11 +69,14 @@ void *handleIncomeMessage(void *params) {
 
             if (args->data->isClient(message)) {
 
-                stream << "LOGIN          Error. User " << message << " is alread logged in";
+                send(args->clientAccept, "0", sizeof(char), 0);
 
+                stream << "LOGIN          Error. User " << message << " is alread logged in";
+                
                 Info::log(stream.str());
             } else {
                 args->data->addClient(message, args->clientAccept);
+                send(args->clientAccept, "1", sizeof(char), 0);
 
                 stream << "LOGIN          client " << args->clientAccept << " logged in as " << message;
 
@@ -198,7 +187,9 @@ void Server::selectSockets() {
                             closesocket(i);
                             FD_CLR(i, &masterReadSet);
 
-                            stream << "DECONNECT      client " << i << " left";
+                            data->removeClient(data->getNameByDescriptor(i));
+
+                            stream << "DISCONNECT     client " << i << " left";
                             Info::log(stream.str());
 
                             continue;
@@ -216,7 +207,7 @@ void Server::selectSockets() {
                         threadParameter* params;
                         params = (threadParameter *) malloc(sizeof(threadParameter));
                 
-                        params->readFileDescriptorSet = &currentReadSet;
+                        params->readFileDescriptorSet = &masterReadSet;
                         params->clientAccept = accept(serverSocketFileDescriptor, (sockaddr *)&clientAddress, &sizeOfClient);
                         params->data = data;
                         
@@ -227,9 +218,6 @@ void Server::selectSockets() {
                         if (params->clientAccept > highestSocketFileDescriptor) {
                             highestSocketFileDescriptor = params->clientAccept;
                         }
-
-                        pthread_t acceptID;
-                        pthread_create(&acceptID, NULL, &handleNewClient, params);
                     }
                 }
             }
