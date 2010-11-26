@@ -4,7 +4,9 @@
 #include <iostream>
 #include <cerrno>
 #include <string>
+#include <sstream>
 #include "client.h"
+#include "info.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -69,6 +71,8 @@ void *handleIncomeMessage(void *params) {
     message.erase(0, 1);
 
     string forwardMessage;
+    string logInfo;
+    stringstream stream;
 
     set<int> followersList;
     set<int>::iterator m;
@@ -78,17 +82,24 @@ void *handleIncomeMessage(void *params) {
         case 'n':
 
             if (args->data->isClient(message)) {
-                cout << "LOGIN          Error. User " << message << " is alread logged in" << endl;
+
+                stream << "LOGIN          Error. User " << message << " is alread logged in";
+
+                Info::log(stream.str());
             } else {
                 args->data->addClient(message, args->clientAccept);
-                cout << "LOGIN          client " << args->clientAccept << " logged in as " << message << endl;
+
+                stream << "LOGIN          client " << args->clientAccept << " logged in as " << message;
+
+                Info::log(stream.str());
             }
 
         break;
 
         case 't':
-            
-            cout << "TWEET          client " << args->clientAccept << " tweets: " << message << endl;
+           
+            stream << "TWEET          client " << args->clientAccept << " tweets: " << message;
+            Info::log(stream.str());
 
             forwardMessage.append(args->data->getNameByDescriptor(args->clientAccept));
             forwardMessage.append(": ");
@@ -99,27 +110,34 @@ void *handleIncomeMessage(void *params) {
 
             while (m != followersList.end()) {
                 send((*m), forwardMessage.c_str(), Client::TWEET_LENGTH, 0); 
-                cout << "SEND TWEET     " << "forward tweet to " << (*m) << endl;
+
+                stream.clear();
+                stream << "SEND TWEET     " << "forward tweet to " << (*m);
+                Info::log(stream.str());
+
                 m++;
             }
 
         break;
 
         case 'f':
-            cout << "FOLLOW         client " << args->clientAccept << " now follows " << message << endl;
+            stream << "FOLLOW         client " << args->clientAccept << " now follows " << message;
+            Info::log(stream.str());
 
             args->data->addFollower(args->clientAccept, args->data->getDescriptorByName(message));
         break;
 
         case 'u':
-            cout << "UNFOLLOW       client " << args->clientAccept << " stopped following " << message << endl;
+            stream << "UNFOLLOW       client " << args->clientAccept << " stopped following " << message;
+            Info::log(stream.str());
 
             args->data->removeFollower(args->clientAccept, args->data->getDescriptorByName(message));
         break;
 
         default:
-
-            cout << "UNKNOWKN TOKEN recieved order: " << order << " with message: " << message << endl;
+            
+            stream << "UNKNOWKN TOKEN recieved order: " << order << " with message: " << message;
+            Info::log(stream.str());
 
         break;
 
@@ -146,6 +164,8 @@ void Server::selectSockets() {
 
     sizeOfClient = sizeof(clientAddress);
 
+    stringstream stream;
+
     while (isAlive) {
 
         memcpy(&currentReadSet, &masterReadSet, sizeof(masterReadSet));
@@ -154,6 +174,8 @@ void Server::selectSockets() {
 
         if (selectResult < 0) {
             cout << "Error with select!\nProgram is canceled" << endl;
+            closesocket(serverSocketFileDescriptor);
+            exit(1);
         }
 
         if (selectResult > 0) {
@@ -171,6 +193,16 @@ void Server::selectSockets() {
                         memset(buffer, 0, sizeof(buffer));
 
                         int response = recv(i, buffer, sizeof(buffer), 0);
+
+                        if (response == -1) {
+                            closesocket(i);
+                            FD_CLR(i, &masterReadSet);
+
+                            stream << "DECONNECT      client " << i << " left";
+                            Info::log(stream.str());
+
+                            continue;
+                        }
 
                         params->clientAccept = i;
                         params->data = data;

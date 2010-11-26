@@ -52,6 +52,8 @@ void Client::start() {
 
     sendLogin(name);
 
+    system("cls");
+
     isAlive = true;
     printTweets = true;
 
