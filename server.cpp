@@ -62,6 +62,9 @@ void *handleIncomeMessage(void *params) {
 
     set<int> followersList;
     set<int>::iterator m;
+    list<string>::iterator u;
+
+    list<string>* tweets;
 
     switch (order) {
 
@@ -69,11 +72,34 @@ void *handleIncomeMessage(void *params) {
 
             if (args->data->isClient(message)) {
 
-                send(args->clientAccept, "0", sizeof(char), 0);
+                if (args->data->isOnline(message)) {
 
-                stream << "LOGIN          Error. User " << message << " is alread logged in";
+                    send(args->clientAccept, "0", sizeof(char), 0);
+
+                    stream << "LOGIN          Error. User " << message << " is alread logged in";
                 
-                Info::log(stream.str());
+                    Info::log(stream.str());
+
+                } else {
+                    send(args->clientAccept, "1", sizeof(char), 0);
+
+                    stream << "LOGIN          User " << message << " came back. Now as client " << args->clientAccept;
+                    Info::log(stream.str());
+
+                    args->data->clientOnline(args->clientAccept, true);
+
+                    tweets = args->data->getTweetsForClient(args->clientAccept);
+
+                    u = tweets->begin();
+                    while (u != tweets->end()) {
+                        send(args->clientAccept, (*u).c_str(), sizeof(char) * (*u).length(), 0);
+                        u++;
+                    }
+
+                    stream << "REFRESH        Sending all related tweets to client " << args->clientAccept;
+                    Info::log(stream.str());
+                }
+
             } else {
                 args->data->addClient(message, args->clientAccept);
                 send(args->clientAccept, "1", sizeof(char), 0);
@@ -100,7 +126,7 @@ void *handleIncomeMessage(void *params) {
             while (m != followersList.end()) {
                 send((*m), forwardMessage.c_str(), Client::TWEET_LENGTH, 0); 
 
-                stream.clear();
+                stream.str("");
                 stream << "SEND TWEET     " << "forward tweet to " << (*m);
                 Info::log(stream.str());
 
@@ -125,7 +151,7 @@ void *handleIncomeMessage(void *params) {
 
         default:
             
-            stream << "UNKNOWKN TOKEN recieved order: " << order << " with message: " << message;
+            stream << "UNKNOWKN TOKEN recieved order '" << order << "' with message: " << message;
             Info::log(stream.str());
 
         break;
@@ -153,9 +179,9 @@ void Server::selectSockets() {
 
     sizeOfClient = sizeof(clientAddress);
 
-    stringstream stream;
-
     while (isAlive) {
+
+        stringstream stream;
 
         memcpy(&currentReadSet, &masterReadSet, sizeof(masterReadSet));
 
@@ -187,7 +213,7 @@ void Server::selectSockets() {
                             closesocket(i);
                             FD_CLR(i, &masterReadSet);
 
-                            data->removeClient(data->getNameByDescriptor(i));
+                            data->removeClient(i);
 
                             stream << "DISCONNECT     client " << i << " left";
                             Info::log(stream.str());
@@ -213,7 +239,8 @@ void Server::selectSockets() {
                         
                         FD_SET(params->clientAccept, &masterReadSet);
 
-                        cout << "CONNECTION     client connected on: " << params->clientAccept << endl;
+                        stream << "CONNECTION     client connected on: " << params->clientAccept;
+                        Info::log(stream.str());
 
                         if (params->clientAccept > highestSocketFileDescriptor) {
                             highestSocketFileDescriptor = params->clientAccept;
