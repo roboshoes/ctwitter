@@ -169,8 +169,13 @@ void* collectTweets(void *args) {
         int response = recv(params->socket, buffer, params->tweetLength, 0);
 
         if (response < 0) {
+
             closesocket(params->socket);
             cout << "=======================\nError on recieving. Socket was closed." << endl;
+
+            *((bool*)params->isAlive) = false;
+            delete [] buffer;
+            break;
         }
         
         params->tweetList->push_back(string(buffer).append("\n"));

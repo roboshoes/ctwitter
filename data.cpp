@@ -45,27 +45,31 @@ list<string>* Data::getTweetsByPublisher(string name) {
     return tweetList;
 }
 
-list<string>* Data::getTweetsForClient(int descriptor) {
+list<string>* Data::getTweetsForClient(string name) {
     list<string>* tweetList = new list<string>;
 
     list<client>::iterator i = users->begin();
     while (i != users->end()) {
 
-        if ((*i).descriptor == descriptor) {
+        if ((*i).name == name) {
 
-            set<int>::iterator m = (*i).following.begin();
+            set<string>::iterator m = (*i).following.begin();
             while (m != (*i).following.end()) {
-                list<string>* currentList = getTweetsByPublisher(getNameByDescriptor(*m));
+
+                list<string>* currentList = getTweetsByPublisher(*m);
 
                 list<string>::iterator b = currentList->begin();
                 while (b != currentList->end()) {
                     tweetList->push_back(*b);
+                    b++;
                 }
 
                 m++;
 
                 delete currentList;
             }
+
+            break;
         }
 
         i++;
@@ -132,12 +136,27 @@ bool Data::isOnline(string name) {
     return false;
 }
 
-void Data::clientOnline(int descriptor, bool value) {
+void Data::setClientOnline(string name, bool value) {
     list<client>::iterator i = users->begin();
     while (i != users->end()) {
         
-        if ((*i).descriptor == descriptor) {
+        if ((*i).name == name) {
             (*i).online = value;
+            return;
+        }
+
+        i++;
+
+    }
+}
+
+void Data::setClientDescriptor(string clientName, int descriptor) {
+    list<client>::iterator i = users->begin();
+    while (i != users->end()) {
+        
+        if ((*i).name == clientName) {
+            (*i).descriptor = descriptor;
+            return;
         }
 
         i++;
@@ -175,17 +194,17 @@ string Data::getNameByDescriptor(int descriptor) {
     return "UNKOWN USER";
 }
 
-void Data::addFollower(int clientDescriptor, int personToFollow) {
+void Data::addFollower(string clientName, string personToFollow) {
 
     list<client>::iterator i = users->begin();
     while (i != users->end()) {
         
-        if ((*i).descriptor == clientDescriptor) {
+        if ((*i).name == clientName) {
             (*i).following.insert(personToFollow);
         }
 
-        if ((*i).descriptor == personToFollow) {
-            (*i).followed.insert(clientDescriptor);
+        if ((*i).name == personToFollow) {
+            (*i).followed.insert(clientName);
         }
 
         i++;
@@ -193,17 +212,17 @@ void Data::addFollower(int clientDescriptor, int personToFollow) {
     }
 }
 
-void Data::removeFollower(int clientDescriptor, int followedPerson) {
+void Data::removeFollower(string clientName, string followedPerson) {
     
     list<client>::iterator i = users->begin();
     while (i != users->end()) {
         
-        if ((*i).descriptor == clientDescriptor) {
+        if ((*i).name == clientName) {
             (*i).following.erase(followedPerson);
         }
 
-        if ((*i).descriptor == followedPerson) {
-            (*i).followed.erase(clientDescriptor);
+        if ((*i).name == followedPerson) {
+            (*i).followed.erase(clientName);
         }
 
         i++;
@@ -212,11 +231,11 @@ void Data::removeFollower(int clientDescriptor, int followedPerson) {
 
 }
 
-set<int> Data::getFollowers(int clientDescriptor) {
+set<string> Data::getFollowers(string clientName) {
     list<client>::iterator i = users->begin();
     while (i != users->end()) {
         
-        if ((*i).descriptor == clientDescriptor) {
+        if ((*i).name == clientName) {
             return (*i).followed;
         }
 
@@ -224,6 +243,6 @@ set<int> Data::getFollowers(int clientDescriptor) {
 
     } 
 
-    set<int> emptySet;
+    set<string> emptySet;
     return emptySet;
 }

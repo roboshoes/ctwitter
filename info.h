@@ -9,15 +9,11 @@ using namespace std;
 class Info {
 
 public:
-    Info* getInstance();
+
+    static string filename;
 
     static void log(string value);
     static void log(char* value);
-
-private:
-    Info(string filename);
-
-    static Info* instance;
 
 };
 

@@ -60,8 +60,9 @@ void *handleIncomeMessage(void *params) {
     string logInfo;
     stringstream stream;
 
-    set<int> followersList;
-    set<int>::iterator m;
+    set<string> followersList;
+    set<string>::iterator m;
+
     list<string>::iterator u;
 
     list<string>* tweets;
@@ -81,21 +82,32 @@ void *handleIncomeMessage(void *params) {
                     Info::log(stream.str());
 
                 } else {
+
                     send(args->clientAccept, "1", sizeof(char), 0);
 
                     stream << "LOGIN          User " << message << " came back. Now as client " << args->clientAccept;
                     Info::log(stream.str());
 
-                    args->data->clientOnline(args->clientAccept, true);
+                    args->data->setClientDescriptor(message, args->clientAccept);
+                    args->data->setClientOnline(message, true);
 
-                    tweets = args->data->getTweetsForClient(args->clientAccept);
+                    tweets = args->data->getTweetsForClient(message);
+                    
+                    stream.str("");
 
+
+                    stream << "================  OLD TWEETS  ===============" << endl;
                     u = tweets->begin();
                     while (u != tweets->end()) {
-                        send(args->clientAccept, (*u).c_str(), sizeof(char) * (*u).length(), 0);
+                        stream << (*u) << endl << endl;
                         u++;
                     }
 
+                    stream << "=============================================";
+
+                    send(args->clientAccept, stream.str().c_str(), sizeof(char) * stream.str().length(), 0);
+
+                    stream.str("");
                     stream << "REFRESH        Sending all related tweets to client " << args->clientAccept;
                     Info::log(stream.str());
                 }
@@ -116,15 +128,17 @@ void *handleIncomeMessage(void *params) {
             stream << "TWEET          client " << args->clientAccept << " tweets: " << message;
             Info::log(stream.str());
 
+            args->data->addTweet(args->data->getNameByDescriptor(args->clientAccept), message);
+
             forwardMessage.append(args->data->getNameByDescriptor(args->clientAccept));
             forwardMessage.append(": ");
             forwardMessage.append(message);
 
-            followersList = args->data->getFollowers(args->clientAccept);
+            followersList = args->data->getFollowers(args->data->getNameByDescriptor(args->clientAccept));
             m = followersList.begin();
 
             while (m != followersList.end()) {
-                send((*m), forwardMessage.c_str(), Client::TWEET_LENGTH, 0); 
+                send(args->data->getDescriptorByName(*m), forwardMessage.c_str(), Client::TWEET_LENGTH, 0); 
 
                 stream.str("");
                 stream << "SEND TWEET     " << "forward tweet to " << (*m);
@@ -139,14 +153,14 @@ void *handleIncomeMessage(void *params) {
             stream << "FOLLOW         client " << args->clientAccept << " now follows " << message;
             Info::log(stream.str());
 
-            args->data->addFollower(args->clientAccept, args->data->getDescriptorByName(message));
+            args->data->addFollower(args->data->getNameByDescriptor(args->clientAccept), message);
         break;
 
         case 'u':
             stream << "UNFOLLOW       client " << args->clientAccept << " stopped following " << message;
             Info::log(stream.str());
 
-            args->data->removeFollower(args->clientAccept, args->data->getDescriptorByName(message));
+            args->data->removeFollower(args->data->getNameByDescriptor(args->clientAccept), message);
         break;
 
         default:

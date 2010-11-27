@@ -53,9 +53,13 @@ void ClientWorker::showMenu() {
 
             sendUnfollow(name);
         break;
+
+        default:
+            cout << "this was no accepted order!" << endl;
+        break;
     }
 
-    cout << "Request completed" << endl;
+    cout << "Switching back ..." << endl;
 
     Sleep(500);
 }

@@ -1,6 +1,7 @@
 #include <iostream>
 #include "server.h"
 #include "client.h"
+#include "info.h"
 
 using namespace std;
 

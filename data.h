@@ -11,8 +11,8 @@ using namespace std;
 struct client {
     string name;
     int descriptor;
-    set<int> following;
-    set<int> followed;
+    set<string> following;
+    set<string> followed;
     bool online;
 };
 
@@ -31,21 +31,22 @@ class Data {
     void addClient(string name, int descriptor);
     void removeClient(int descriptor);
 
-    void addFollower(int clientDescriptor, int personToFollow);
-    void removeFollower(int clientDescriptor, int followedPerson);
+    void addFollower(string clientName, string personToFollow);
+    void removeFollower(string clientName, string followedPerson);
 
-    set<int> getFollowers(int clientDescriptor);
+    set<string> getFollowers(string clientName);
 
     bool isClient(string name);
     bool isOnline(string name);
-    void clientOnline(int descriptor, bool value);
+    void setClientOnline(string name, bool value);
+    void setClientDescriptor(string clientName, int descriptor);
 
     int getDescriptorByName(string name);
     string getNameByDescriptor(int descriptor);
 
     void addTweet(string name, string tweet);
     list<string>* getTweetsByPublisher(string name);
-    list<string>* getTweetsForClient(int descriptor);
+    list<string>* getTweetsForClient(string name);
     
   private:
 
