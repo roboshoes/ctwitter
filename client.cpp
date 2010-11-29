@@ -202,7 +202,6 @@ void* launchMemberFunction(void *args) {
     ClientWorker myWorker(params->socket);
     myWorker.showMenu();
 
-    
     system("cls");
     list<string>::iterator i = params->tweetList->begin();
     if (!params->tweetList->empty()) {

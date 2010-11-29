@@ -184,10 +184,6 @@ void Server::selectSockets() {
     fd_set currentReadSet;
     fd_set masterReadSet;
 
-    timeval timeInterval;
-            timeInterval.tv_sec = 5;
-            timeInterval.tv_usec = 0;
-
     FD_ZERO(&masterReadSet);
     FD_SET(serverSocketFileDescriptor, &masterReadSet);
 
@@ -244,20 +240,15 @@ void Server::selectSockets() {
 
                     } else if (i == serverSocketFileDescriptor) {
 
-                        threadParameter* params;
-                        params = (threadParameter *) malloc(sizeof(threadParameter));
-                
-                        params->readFileDescriptorSet = &masterReadSet;
-                        params->clientAccept = accept(serverSocketFileDescriptor, (sockaddr *)&clientAddress, &sizeOfClient);
-                        params->data = data;
+                        int socket = accept(serverSocketFileDescriptor, (sockaddr *)&clientAddress, &sizeOfClient);
                         
-                        FD_SET(params->clientAccept, &masterReadSet);
+                        FD_SET(socket, &masterReadSet);
 
-                        stream << "CONNECTION     client connected on: " << params->clientAccept;
+                        stream << "CONNECTION     client connected on: " << socket;
                         Info::log(stream.str());
 
-                        if (params->clientAccept > highestSocketFileDescriptor) {
-                            highestSocketFileDescriptor = params->clientAccept;
+                        if (socket > highestSocketFileDescriptor) {
+                            highestSocketFileDescriptor = socket;
                         }
                     }
                 }

@@ -1,0 +1,4 @@
+CONNECTION     client connected on: 200
+LOGIN          client 200 logged in as Mathias
+TWEET          client 200 tweets: Hallo
+DISCONNECT     client 200 left
