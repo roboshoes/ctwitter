@@ -1,5 +1,5 @@
 /*
- * Author: David Strauﬂ, Mathias Paumgarten
+ * Author: David Strau√ü, Mathias Paumgarten
  */
 
 #include <sys/types.h>
