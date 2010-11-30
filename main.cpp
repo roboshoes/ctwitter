@@ -1,3 +1,7 @@
+/*
+ * Author: David Strauﬂ, Mathias Paumgarten
+ */
+
 #include <iostream>
 #include "server.h"
 #include "client.h"
@@ -5,6 +9,10 @@
 
 using namespace std;
 
+/*
+ * Starting Point of Program. Depending on user input it will either start a client or a server node.
+ * Not possible to launch two servers on same IP and Port.
+ */
 int main () {
     
     char choice;

@@ -1,3 +1,7 @@
+/*
+ * Author: David Strauﬂ, Mathias Paumgarten
+ */
+
 #ifndef CLIENT_H
 #define CLIENT_H
 
@@ -8,6 +12,29 @@
 
 using namespace std;
 
+/*
+ * -----------------------------------------------------
+ * Functions and data structures needed vor the threads.
+ */
+
+void* launchUserMenu(void *args);
+void* collectTweets(void *args);
+
+struct threadParams {
+    bool* printTweets;
+    int socket;
+    list<string>* tweetList;
+};
+
+struct collectorParams {
+    bool* printTweets;
+    bool* isAlive;
+    int socket;
+    int tweetLength;
+    list<string>* tweetList;
+};
+/* ----------------------------------------------------- */
+
 class Client {
 
 public:
@@ -17,7 +44,6 @@ public:
 
     void connectSocket();
     void start();
-    void close();
 
     static const int USERNAME_LENGTH = 25;
     static const int TWEET_LENGTH = 140;

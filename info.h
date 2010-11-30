@@ -1,3 +1,8 @@
+/*
+ * Author: David Strauﬂ, Mathias Paumgarten
+ */
+
+
 #ifndef INFO_H
 #define INFO_H
 

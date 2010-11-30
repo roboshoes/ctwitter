@@ -1,3 +1,7 @@
+/*
+ * Author: David Strauﬂ, Mathias Paumgarten
+ */
+
 #ifndef CLIENTWORKER_H
 #define CLIENTWORKER_H
 

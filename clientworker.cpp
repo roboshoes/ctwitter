@@ -1,3 +1,7 @@
+/*
+ * Author: David Strauﬂ, Mathias Paumgarten
+ */
+
 #include <iostream>
 #include "clientworker.h"
 #include <WinSock2.h>
@@ -9,6 +13,9 @@ using namespace std;
 
 ClientWorker::ClientWorker(int socket):socketFileDescriptor(socket) {};
 
+/*
+ * Prints menu and asks for user input.
+ */
 void ClientWorker::showMenu() {
     system("cls");
 
@@ -21,6 +28,7 @@ void ClientWorker::showMenu() {
 
     char name[USERNAME_LENGTH];
 
+    // Depending on the user input it starts a different subroutine.
     switch (choice) {
         case 't':
             cout << "What's going on?" << endl;
@@ -64,6 +72,9 @@ void ClientWorker::showMenu() {
     Sleep(500);
 }
 
+/* 
+ * Prints the menu
+ */
 void ClientWorker::printMenu() {
     cout << "What to do next?" << endl << endl;
 
@@ -74,6 +85,10 @@ void ClientWorker::printMenu() {
     cout << endl << endl;
 }
 
+/* 
+ * Next functions actually send the requests. Depending of the kind of the request it sets 
+ * the necessary control element. (first char)
+ */
 void ClientWorker::sendTweet(char* message) {
     string buffer;
     buffer.append("t");

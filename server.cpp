@@ -1,3 +1,7 @@
+/*
+ * Author: David Strauﬂ, Mathias Paumgarten
+ */
+
 #include <sys/types.h>
 #include "server.h"
 #include <pthread.h>
@@ -12,6 +16,9 @@
 
 using namespace std;
 
+/*
+ * Server is initialized with IP Adress and Port.
+ */
 Server::Server(char* _ip, unsigned short _port):ip(_ip), port(_port) {
 
     this->serverAddress.sin_family = AF_INET;
@@ -25,6 +32,9 @@ Server::~Server() {
     delete data;
 }
 
+/*
+ * Walkes through the socket initializing process by calling several subroutines.
+ */
 void Server::start() {
     initializeWindowsSockets();
 
@@ -37,6 +47,9 @@ void Server::start() {
     isAlive = true;
 }
 
+/*
+ * Parameters to be passed onto the thread.
+ */
 struct threadParameter {
     int clientAccept;
     fd_set *readFileDescriptorSet;
@@ -44,6 +57,10 @@ struct threadParameter {
     char* message;
 };
 
+/*
+ * This function is launched as thread an handles the incomin request from each client. 
+ * One thread per message.
+ */
 void *handleIncomeMessage(void *params) {
 
     threadParameter* args;
@@ -69,11 +86,11 @@ void *handleIncomeMessage(void *params) {
 
     switch (order) {
 
-        case 'n':
+        case 'n': // command for client login.
 
             if (args->data->isClient(message)) {
 
-                if (args->data->isOnline(message)) {
+                if (args->data->isOnline(message)) { // if the client is already logged in.
 
                     send(args->clientAccept, "0", sizeof(char), 0);
 
@@ -81,7 +98,7 @@ void *handleIncomeMessage(void *params) {
                 
                     Info::log(stream.str());
 
-                } else {
+                } else { // if the client returns but already is in the data structure.
 
                     send(args->clientAccept, "1", sizeof(char), 0);
 
@@ -112,7 +129,7 @@ void *handleIncomeMessage(void *params) {
                     Info::log(stream.str());
                 }
 
-            } else {
+            } else { // a new client logged in.
                 args->data->addClient(message, args->clientAccept);
                 send(args->clientAccept, "1", sizeof(char), 0);
 
@@ -123,7 +140,7 @@ void *handleIncomeMessage(void *params) {
 
         break;
 
-        case 't':
+        case 't': // command for a new tweet
            
             stream << "TWEET          client " << args->clientAccept << " tweets: " << message;
             Info::log(stream.str());
@@ -137,7 +154,7 @@ void *handleIncomeMessage(void *params) {
             followersList = args->data->getFollowers(args->data->getNameByDescriptor(args->clientAccept));
             m = followersList.begin();
 
-            while (m != followersList.end()) {
+            while (m != followersList.end()) { // forward this tweet to all clients who follow the current client.
                 send(args->data->getDescriptorByName(*m), forwardMessage.c_str(), Client::TWEET_LENGTH, 0); 
 
                 stream.str("");
@@ -149,21 +166,21 @@ void *handleIncomeMessage(void *params) {
 
         break;
 
-        case 'f':
+        case 'f': // command for a follow
             stream << "FOLLOW         client " << args->clientAccept << " now follows " << message;
             Info::log(stream.str());
 
             args->data->addFollower(args->data->getNameByDescriptor(args->clientAccept), message);
         break;
 
-        case 'u':
+        case 'u': // command for unfollow
             stream << "UNFOLLOW       client " << args->clientAccept << " stopped following " << message;
             Info::log(stream.str());
 
             args->data->removeFollower(args->data->getNameByDescriptor(args->clientAccept), message);
         break;
 
-        default:
+        default: // in case a unknown command is sent.
             
             stream << "UNKNOWKN TOKEN recieved order '" << order << "' with message: " << message;
             Info::log(stream.str());
@@ -177,6 +194,10 @@ void *handleIncomeMessage(void *params) {
     return 0;
 }
 
+/*
+ * This function keeps tracking incoming messages via selecting over a certain amount
+ * of ports.
+ */
 void Server::selectSockets() {
 
     int selectResult;
@@ -205,8 +226,10 @@ void Server::selectSockets() {
 
         if (selectResult > 0) {
 
+            // Looping over all sockets
             for (int i = 4; i < highestSocketFileDescriptor + 1; i++) {
 
+                // Sockets that were already accepted.
                 if (FD_ISSET(i, &currentReadSet)) {
                    
                     if (i != serverSocketFileDescriptor) {
@@ -235,10 +258,11 @@ void Server::selectSockets() {
                         params->data = data;
                         params->message = buffer;
 
+                        // Starting  the thread to handel the incomeing request.
                         pthread_t receiveID;
                         pthread_create(&receiveID, NULL, &handleIncomeMessage, params);
 
-                    } else if (i == serverSocketFileDescriptor) {
+                    } else if (i == serverSocketFileDescriptor) { // Accepting new clients
 
                         int socket = accept(serverSocketFileDescriptor, (sockaddr *)&clientAddress, &sizeOfClient);
                         
@@ -257,6 +281,10 @@ void Server::selectSockets() {
     }
 }
 
+
+/* 
+ * Subroutines for sockets to work.
+ */
 void Server::openSocket() {
     serverSocketFileDescriptor = socket(PF_INET, SOCK_STREAM, 0);
     if (serverSocketFileDescriptor < 0) {

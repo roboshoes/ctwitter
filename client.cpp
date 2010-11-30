@@ -1,3 +1,7 @@
+/*
+ * Author: David Strauﬂ, Mathias Paumgarten
+ */
+
 #include <iostream>
 #include <cstdlib>
 #include <ios>
@@ -14,6 +18,9 @@
 
 using namespace std;
 
+/* 
+ * Initialize the tweets list which stores all tweets the client handles as long as its running.
+ */
 Client::Client(char* _ip, unsigned short _port):ip(_ip), port(_port) {
     tweetList = new list<string>;
 }
@@ -22,6 +29,9 @@ Client::~Client() {
     delete tweetList;
 }
 
+/*
+ * Connect to the socket. Therefore a server must be up and running.
+ */
 void Client::connectSocket() {
 
     initializeWindowsSockets();
@@ -42,6 +52,11 @@ void Client::connectSocket() {
 
 }
 
+/*
+ * When connection to server is established user is asked to login with a username.
+ * As long as the the client doesn't accept to login with an answer of 1 the user will be
+ * asked again to login with a other username.
+ */
 void Client::start() {
 
     char name[USERNAME_LENGTH];
@@ -64,9 +79,9 @@ void Client::start() {
             exit(0);
         }
 
-        if (answer[0] == '1') {
+        if (answer[0] == '1') {    // Server sends '1' as OK for login.
             userAccepted = true;
-        } else {
+        } else {                   // Server sends '0' when Error occured
             cout << "This user is already logged in." << endl << endl;
         }
     }
@@ -79,40 +94,21 @@ void Client::start() {
     showTweetScreen();
 }
 
-void Client::close() {
-    closesocket(socketFileDescriptor);
-	WSACleanup();
-}
-
 /*
- * Functions and data structures needed vor the threads.
+ * This function starts thread which collects all tweets that are sent from the server.
+ * Additionally it checks for any input from the keyboard to launch menu is the user
+ * desires so.
  */
-void* launchMemberFunction(void *args);
-void* collectTweets(void *args);
-
-struct threadParams {
-    bool* printTweets;
-    int socket;
-    list<string>* tweetList;
-};
-
-struct collectorParams {
-    bool* printTweets;
-    bool* isAlive;
-    int socket;
-    int tweetLength;
-    list<string>* tweetList;
-};
-/**/
-
 void Client::showTweetScreen() {
    
+    // Introductions that are set into the tweetslist, so that tweetsscreen always shoes them on the top
     tweetList->push_back("====================================");
     tweetList->push_back("==  ALL YOUR TWEETS ON ONE SIGHT  ==");
     tweetList->push_back("====================================");
     tweetList->push_back(" ");
     tweetList->push_back("(Hit any key to go into the the menu mode for tweeting or following)\n\n");
 
+    // Parameters that are needed in the thread that collects all server sent tweets.
     collectorParams* tweetSelectorParams;
     tweetSelectorParams = (collectorParams*) malloc(sizeof(collectorParams));
 
@@ -122,9 +118,12 @@ void Client::showTweetScreen() {
     tweetSelectorParams->isAlive = &isAlive;
     tweetSelectorParams->tweetList = tweetList;
 
+    // Creating and starting the thread that collects the tweets.
     pthread_t tweetRecieveID;
     pthread_create(&tweetRecieveID, NULL, &collectTweets, tweetSelectorParams);
 
+    // This loop constantly checks for User input. If User hits a button on the keyboard it
+    // will start a thread with the menu.
     while(isAlive) {
         
         if (_kbhit() && printTweets) {
@@ -137,13 +136,17 @@ void Client::showTweetScreen() {
             params->tweetList = tweetList;
 
             pthread_t receiveID;
-            pthread_create(&receiveID, NULL, &launchMemberFunction, params);
+            pthread_create(&receiveID, NULL, &launchUserMenu, params);
 
             printTweets = false;
         }
     }
 }
 
+
+/*
+ * This function collects all tweets that are sent to the client.
+ */
 void* collectTweets(void *args) {
 
     pthread_detach(pthread_self());
@@ -151,6 +154,8 @@ void* collectTweets(void *args) {
     collectorParams *params;
     params = (collectorParams*) args;
 
+    // Print all tweets that are stored in the tweet list, befor server was sending messages 
+    // (In our cause, this is always the header)
     list<string>::iterator i = params->tweetList->begin();
     if (!params->tweetList->empty()) {
         while (i != params->tweetList->end()) {
@@ -161,6 +166,7 @@ void* collectTweets(void *args) {
         }
     }
 
+    // This loop keeps checking for new messages. 
     while(*((bool*)params->isAlive)) {
 
         char* buffer = new char[Client::TWEET_LENGTH + Client::USERNAME_LENGTH + 10];
@@ -178,8 +184,11 @@ void* collectTweets(void *args) {
             break;
         }
         
+        // Push new messages into the list of tweets
         params->tweetList->push_back(string(buffer).append("\n"));
 
+        // If the menu is currenty in use by the user, the application cannot print new 
+        // tweets.
         if (*((bool*)params->printTweets)) {
             cout << buffer << "\n" << endl;  
         } 
@@ -190,7 +199,11 @@ void* collectTweets(void *args) {
     return NULL;
 }
 
-void* launchMemberFunction(void *args) {
+/*
+ * Functions launches an instance of ClientWorker which is used to show the menu
+ * and send requests to the server such as tweet or so.
+ */
+void* launchUserMenu(void *args) {
 
     system("cls");
 
@@ -199,9 +212,14 @@ void* launchMemberFunction(void *args) {
     threadParams *params;
     params = (threadParams*) args;
 
+    // Client worker actually handles the printing of the menu
+    // and the user input.
     ClientWorker myWorker(params->socket);
     myWorker.showMenu();
 
+    // After user has finished the request the menu is cleared from the screen
+    // and all tweets are printed, including the tweets that were sent meanwhile the
+    // user was in the menu.
     system("cls");
     list<string>::iterator i = params->tweetList->begin();
     if (!params->tweetList->empty()) {
@@ -220,7 +238,9 @@ void* launchMemberFunction(void *args) {
     return NULL;
 }
 
-
+/*
+ * This function handles the send request to login
+ */
 void Client::sendLogin(char* name) {
 
     string buffer;
@@ -233,7 +253,9 @@ void Client::sendLogin(char* name) {
     send(socketFileDescriptor, message, USERNAME_LENGTH + 1, 0);
 }
 
-
+/*
+ * Needed to use sockets on windows.
+ */
 void Client::initializeWindowsSockets() {
     WSADATA wsa;
 

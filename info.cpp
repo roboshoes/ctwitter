@@ -1,3 +1,7 @@
+/*
+ * Author: David Strauﬂ, Mathias Paumgarten
+ */
+
 #include "info.h"
 #include <iostream>
 #include <string>
@@ -5,10 +9,16 @@
 
 using namespace std;
 
+/*
+ * Overloads the log function to also work wich char arrays, c style
+ */
 void Info::log(char* value) {
     log(string(value));
 }
 
+/*
+ * Logs a message into the console and also writes it into a file.
+ */
 void Info::log(string value) {
     cout << value << endl;
 
