@@ -1,5 +1,5 @@
 /*
- * Author: David Strauß, Mathias Paumgarten
+ * Author: David StrauÃŸ, Mathias Paumgarten
  */
 
 #include "data.h"
